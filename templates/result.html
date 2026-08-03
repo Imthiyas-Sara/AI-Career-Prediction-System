@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>CareerSim AI Result</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="career-body">
+	<div class="background-orbs"></div>
+	<main class="container dashboard-shell dashboard-scroll py-4 py-xl-5">
+		<section class="scroll-section scroll-section-1 career-card glass-panel">
+			<div class="section-header">
+				<div class="section-title-block">
+					<img src="{{ url_for('logo') }}" alt="CareerSim AI logo" class="career-logo mb-3">
+					<p class="eyebrow mb-2">AI Career Insight Overview</p>
+					<h1 class="display-6 fw-bold mb-2">{{ prediction.predicted_role }}</h1>
+					<p class="subtitle mb-0">Top match with {{ prediction.predicted_probability }}% confidence. Model accuracy on the held-out set: {{ prediction.accuracy }}%.</p>
+				</div>
+				<div class="section-mini-stat result-panel">
+					<span class="result-label">Readiness</span>
+					<div class="hero-score">{{ readiness_score }}%</div>
+					<div class="hero-score-note">Based on matched survey skills</div>
+				</div>
+			</div>
+
+			<div class="insight-layout">
+				<div class="insight-left">
+					<div class="result-panel panel-explanation">
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<span class="result-label">Career Growth Explanation</span>
+							<span class="result-score">Overview</span>
+						</div>
+						<p class="result-note mb-0">{{ career_growth_explanation }}</p>
+					</div>
+
+					<div class="result-panel panel-summary-box mt-4">
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<span class="result-label">Career Summary</span>
+							<span class="result-score">{{ target_year }}</span>
+						</div>
+						<div class="summary-grid">
+							<div class="metric-card">
+								<span class="metric-label">Predicted Role</span>
+								<span class="metric-value">{{ prediction.predicted_role }}</span>
+							</div>
+							<div class="metric-card">
+								<span class="metric-label">Accuracy</span>
+								<span class="metric-value">{{ prediction.accuracy }}%</span>
+							</div>
+							<div class="metric-card metric-card-wide">
+								<span class="metric-label">Confidence</span>
+								<span class="metric-value">{{ prediction.predicted_probability }}%</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="insight-right">
+					<div class="result-panel panel-minimal-score">
+						<div class="d-flex justify-content-between align-items-center mb-3">
+							<span class="result-label">Insight Indicator </span>
+							<span class="result-score">{{ readiness_score }}%</span>
+						</div>
+						<div class="score-ring score-ring-compact" data-score="{{ readiness_score }}">
+							<div class="score-ring-inner">
+								<span class="score-ring-value">{{ readiness_score }}%</span>
+								<span class="score-ring-label">Readiness</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="scroll-section scroll-section-2 career-card glass-panel">
+			<div class="section-header section-header-inline">
+				<div>
+					<h2 class="display-6 fw-bold mb-2">Career Probability Distribution</h2>
+					<p class="subtitle mb-0">Interactive probability chart for all career roles.</p>
+				</div>
+			</div>
+			<div class="result-panel panel-probability full-width-probability">
+				<div id="probability-chart" class="probability-chart" data-probabilities='{{ prediction.probabilities | tojson }}'></div>
+			</div>
+		</section>
+
+		<!-- SHAP Explanation Section -->
+		<section class="scroll-section scroll-section-3 career-card glass-panel">
+			<div class="section-header section-header-inline">
+				<div>
+					<h2 class="display-6 fw-bold mb-2">SHAP Prediction Explanation</h2>
+					<p class="subtitle mb-0">Why this career path was recommended (SHAP values)</p>
+				</div>
+			</div>
+			
+			<div class="result-panel panel-explanation">
+				<div class="explanation-container" id="explanation-container">
+					<div class="text-center py-4">
+						<div class="spinner-border text-secondary" role="status">
+							<span class="visually-hidden">Loading SHAP explanation...</span>
+						</div>
+						<p class="mt-2 text-muted">Calculating SHAP values...</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="scroll-section scroll-section-4 career-card glass-panel">
+			<div class="section-header section-header-inline">
+				<div>
+					<h2 class="display-6 fw-bold mb-2">Action Plan</h2>
+					<p class="subtitle mb-0">Skills to learn and next steps for the predicted role.</p>
+				</div>
+			</div>
+
+			<div class="action-layout">
+				<div class="result-panel panel-skills">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<span class="result-label">Suggested Skills</span>
+						<span class="result-score">{{ recommended_skills|length }}</span>
+					</div>
+					<div class="skills-list">
+						{% for skill in recommended_skills %}
+							<span class="skill-chip">{{ skill }}</span>
+						{% else %}
+							<span class="skill-chip">No additional skills recommended</span>
+						{% endfor %}
+					</div>
+				</div>
+
+				<div class="result-panel panel-action">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<span class="result-label">Career Readiness Summary</span>
+						<span class="result-score">{{ readiness_score }}%</span>
+					</div>
+					<div class="action-summary-block">
+						<div class="metric-card metric-card-wide">
+							<span class="metric-label">Skills Already Possessed</span>
+							<span class="metric-value">{{ current_skills_count }}</span>
+						</div>
+						<div class="metric-card metric-card-wide">
+							<span class="metric-label">Missing Skills</span>
+							<span class="metric-value">{{ missing_skills_count }}</span>
+						</div>
+						<div class="metric-card metric-card-wide">
+							<span class="metric-label">Future Role</span>
+							<span class="metric-value">{{ future_role }}</span>
+						</div>
+					</div>
+					<div class="dashboard-footer action-footer mt-4">
+						<a href="/" class="btn predict-btn cta-back">Back to Home</a>
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<!-- Floating Chat Button -->
+	<button id="chat-toggle" class="chat-toggle-btn">
+		<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+		</svg>
+		<span class="chat-badge">●</span>
+	</button>
+
+	<!-- Chat Window -->
+	<div id="chat-window" class="chat-window hidden">
+		<div class="chat-header">
+			<div>
+				<h5 class="mb-0">AI Career Assistant</h5>
+				<small class="text-muted">Powered by Groq AI</small>
+			</div>
+			<button id="chat-close" class="btn-close-chat">&times;</button>
+		</div>
+		
+		<div class="chat-body" id="chat-body">
+			<div class="chat-messages" id="chat-messages">
+				<div class="message assistant">
+					<div class="message-content">
+						<strong>AI Assistant:</strong> Hello! I'm your career advisor. Ask me about career development, skills, or professional growth.
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<div class="chat-footer">
+			<form id="chat-form" class="chat-input-form">
+				<input type="text" class="form-control form-control-sm" id="chat-input" placeholder="Ask a career question..." required>
+				<button type="submit" class="btn btn-sm btn-primary">Send</button>
+			</form>
+		</div>
+	</div>
+
+	<!-- Hidden data containers -->
+	<div id="prediction-data" data-prediction='{{ prediction | tojson }}' style="display:none;"></div>
+	<div id="user-data" data-user='{{ data | tojson }}' style="display:none;"></div>
+	<div id="readiness-data" data-readiness='{{ readiness_score | tojson }}' style="display:none;"></div>
+
+	<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+	
+	<script>
+		// Get data from hidden divs
+		const predictionDataElement = document.getElementById('prediction-data');
+		const userDataElement = document.getElementById('user-data');
+		const readinessDataElement = document.getElementById('readiness-data');
+		
+		const predictionData = JSON.parse(predictionDataElement.dataset.prediction);
+		const userData = JSON.parse(userDataElement.dataset.user);
+		const readinessScore = JSON.parse(readinessDataElement.dataset.readiness);
+		
+		// Probability Chart
+		const probabilityData = predictionData.probabilities;
+		const probabilityChart = {
+			type: 'bar',
+			x: probabilityData.map((item) => item.probability),
+			y: probabilityData.map((item) => item.role),
+			orientation: 'h',
+			marker: {
+				color: probabilityData.map((_, index) => ['#a855f7', '#8b5cf6', '#c084fc', '#d8b4fe', '#e9d5ff'][index % 5]),
+				line: {
+					color: 'rgba(255,255,255,0.18)',
+					width: 1,
+				},
+			},
+			hovertemplate: '%{y}: %{x:.2f}%<extra></extra>',
+		};
+
+		Plotly.newPlot('probability-chart', [probabilityChart], {
+			paper_bgcolor: 'rgba(0,0,0,0)',
+			plot_bgcolor: 'rgba(0,0,0,0)',
+			margin: { t: 8, r: 20, b: 30, l: 190 },
+			xaxis: {
+				title: 'Probability (%)',
+				tickfont: { color: '#c7bddf' },
+				gridcolor: 'rgba(216, 180, 254, 0.14)',
+				zerolinecolor: 'rgba(216, 180, 254, 0.18)',
+				color: '#c7bddf',
+			},
+			yaxis: {
+				tickfont: { color: '#f7f4ff' },
+				color: '#f7f4ff',
+				automargin: true,
+			},
+			font: { family: 'Space Grotesk, sans-serif', color: '#f7f4ff' },
+			showlegend: false,
+		}, {
+			responsive: true,
+			displayModeBar: false,
+		});
+
+		document.querySelectorAll('.score-ring[data-score]').forEach((element) => {
+			element.style.setProperty('--score', element.dataset.score + '%');
+		});
+
+		// ============================================
+		// REAL SHAP EXPLANATION - Fetches from backend
+		// ============================================
+		(function() {
+			const container = document.getElementById('explanation-container');
+			if (!container) return;
+			
+			// Get prediction data
+			const formData = {
+				skills: userData.skills || '',
+				experience: userData.experience || 0,
+				education: userData.education || ''
+			};
+			
+			// Show loading state
+			container.innerHTML = `
+				<div class="text-center py-4">
+					<div class="spinner-border text-secondary" role="status">
+						<span class="visually-hidden">Loading SHAP explanation...</span>
+					</div>
+					<p class="mt-2 text-muted">Calculating SHAP values...</p>
+				</div>
+			`;
+			
+			// Fetch SHAP explanation from backend
+			fetch('/explain', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(formData)
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (!data.success) {
+					container.innerHTML = `
+						<div class="text-center py-4 text-warning">
+							<p>⚠️ ${data.explanation_text || 'SHAP explanation not available'}</p>
+							<small class="text-muted">Error: ${data.error || 'Unknown error'}</small>
+						</div>
+					`;
+					return;
+				}
+				
+				// Build SHAP explanation HTML
+				let html = '';
+				html += '<div class="shap-explanation">';
+				
+				// Header
+				html += '<div class="shap-header">';
+				html += '<div class="shap-role">';
+				html += '<span class="shap-role-icon">🎯</span>';
+				html += '<div>';
+				html += '<div class="shap-role-title">SHAP Analysis - Predicted Career</div>';
+				html += '<div class="shap-role-name">' + data.predicted_role + '</div>';
+				html += '</div></div>';
+				html += '<div class="shap-confidence">';
+				html += '<span class="shap-confidence-value">' + data.predicted_probability + '%</span>';
+				html += '<span class="shap-confidence-label">Confidence</span>';
+				html += '</div></div>';
+				
+				// Explanation Text
+				html += '<div class="shap-explanation-text">';
+				html += '<div class="shap-explanation-icon">🧠</div>';
+				html += '<div>';
+				html += '<h5>SHAP Value Explanation</h5>';
+				html += '<p>' + data.explanation_text + '</p>';
+				html += '<p class="shap-readiness"><small>SHAP shows how each feature contributed to the prediction. Positive values increase confidence, negative values decrease it.</small></p>';
+				html += '</div></div>';
+				
+				// SHAP Feature Importance
+				if (data.top_features && data.top_features.length > 0) {
+					html += '<div class="shap-features">';
+					html += '<h5>📊 Feature Contributions (SHAP Values)</h5>';
+					html += '<div class="shap-feature-list">';
+					
+					var maxAbs = 0;
+					for (var i = 0; i < data.top_features.length; i++) {
+						if (data.top_features[i].abs_contribution > maxAbs) {
+							maxAbs = data.top_features[i].abs_contribution;
+						}
+					}
+					if (maxAbs === 0) maxAbs = 1;
+					
+					for (var j = 0; j < Math.min(data.top_features.length, 12); j++) {
+						var feature = data.top_features[j];
+						var featureName = feature.feature.replace('skills__', '').replace('education_', 'Education: ');
+						if (featureName.length > 30) {
+							featureName = featureName.substring(0, 30) + '...';
+						}
+						var percentage = Math.min((feature.abs_contribution / maxAbs) * 100, 100);
+						var color = feature.contribution > 0 ? '#22c55e' : '#ef4444';
+						var sign = feature.contribution > 0 ? '+' : '';
+						
+						html += '<div class="shap-feature-item">';
+						html += '<div class="shap-feature-label">';
+						html += '<span>' + featureName + '</span>';
+						html += '<span class="shap-feature-value" style="color:' + color + ';">' + sign + (feature.contribution * 100).toFixed(2) + '%</span>';
+						html += '</div>';
+						html += '<div class="shap-feature-bar">';
+						html += '<div class="shap-feature-fill" style="width:' + percentage + '%;background:' + color + ';"></div>';
+						html += '</div>';
+						html += '<div class="shap-feature-detail">';
+						html += '<span>' + (feature.contribution > 0 ? '⬆ Increases chance' : '⬇ Decreases chance') + '</span>';
+						html += '<span>' + percentage.toFixed(1) + '% importance</span>';
+						html += '</div></div>';
+					}
+					
+					html += '</div></div>';
+				}
+				
+				// Footer
+				html += '<div class="shap-footer">';
+				html += '<small>🔬 SHAP (SHapley Additive exPlanations) values show the contribution of each feature to the prediction. ';
+				html += 'Positive values push toward the predicted role, negative values push away.</small>';
+				html += '</div>';
+				
+				html += '</div>';
+				container.innerHTML = html;
+			})
+			.catch(error => {
+				container.innerHTML = `
+					<div class="text-center py-4 text-danger">
+						<p>❌ Error loading SHAP explanation</p>
+						<small class="text-muted">${error.message}</small>
+					</div>
+				`;
+				console.error('SHAP error:', error);
+			});
+		})();
+
+		// ============================================
+		// FLOATING CHAT WIDGET
+		// ============================================
+		(function() {
+			var chatToggle = document.getElementById('chat-toggle');
+			var chatWindow = document.getElementById('chat-window');
+			var chatClose = document.getElementById('chat-close');
+			var chatForm = document.getElementById('chat-form');
+			var chatInput = document.getElementById('chat-input');
+			var chatMessages = document.getElementById('chat-messages');
+
+			if (!chatToggle || !chatWindow) return;
+
+			// Toggle chat window
+			chatToggle.addEventListener('click', function() {
+				chatWindow.classList.toggle('hidden');
+				if (!chatWindow.classList.contains('hidden')) {
+					chatInput.focus();
+				}
+			});
+
+			if (chatClose) {
+				chatClose.addEventListener('click', function() {
+					chatWindow.classList.add('hidden');
+				});
+			}
+
+			// Get prediction data
+			var chatPredictionData = {
+				skills: userData.skills || '',
+				experience: userData.experience || 0,
+				education: userData.education || '',
+				predicted_role: predictionData.predicted_role || '',
+				readiness_score: readinessScore || 0
+			};
+
+			function addChatMessage(message, isUser) {
+				if (isUser === undefined) isUser = false;
+				var messageDiv = document.createElement('div');
+				messageDiv.className = 'message ' + (isUser ? 'user' : 'assistant');
+				
+				var content = document.createElement('div');
+				content.className = 'message-content';
+				content.innerHTML = message.replace(/\n/g, '<br>');
+				messageDiv.appendChild(content);
+				
+				chatMessages.appendChild(messageDiv);
+				chatMessages.scrollTop = chatMessages.scrollHeight;
+			}
+
+			function showTypingIndicator() {
+				var indicator = document.createElement('div');
+				indicator.className = 'message assistant';
+				indicator.id = 'typing-indicator';
+				indicator.innerHTML = '<div class="message-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
+				chatMessages.appendChild(indicator);
+				chatMessages.scrollTop = chatMessages.scrollHeight;
+			}
+
+			function removeTypingIndicator() {
+				var indicator = document.getElementById('typing-indicator');
+				if (indicator) indicator.remove();
+			}
+
+			async function sendChatMessage(query) {
+				if (!query.trim()) return;
+				
+				addChatMessage(query, true);
+				chatInput.value = '';
+				
+				showTypingIndicator();
+				
+				try {
+					var response = await fetch('/ai_chat_context', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({
+							query: query,
+							prediction: chatPredictionData
+						})
+					});
+					
+					var data = await response.json();
+					removeTypingIndicator();
+					
+					if (data.blocked) {
+						addChatMessage('⚠️ ' + data.response, false);
+					} else if (data.error) {
+						addChatMessage('❌ Error: ' + data.response, false);
+					} else {
+						addChatMessage(data.response, false);
+					}
+					
+				} catch (error) {
+					removeTypingIndicator();
+					addChatMessage('❌ Sorry, I encountered an error. Please try again.', false);
+					console.error('Chat error:', error);
+				}
+			}
+
+			if (chatForm) {
+				chatForm.addEventListener('submit', function(e) {
+					e.preventDefault();
+					var query = chatInput.value.trim();
+					if (query) {
+						sendChatMessage(query);
+					}
+				});
+			}
+
+			if (chatInput) {
+				chatInput.addEventListener('keypress', function(e) {
+					if (e.key === 'Enter' && !e.shiftKey) {
+						e.preventDefault();
+						if (chatForm) {
+							chatForm.dispatchEvent(new Event('submit'));
+						}
+					}
+				});
+			}
+		})();
+	</script>
+</body>
+</html>
